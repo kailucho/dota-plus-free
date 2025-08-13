@@ -6,7 +6,7 @@ services:
     autoDeploy: true
     region: frankfurt
     dockerfilePath: packages/server/Dockerfile
-  healthCheckPath: /health
+    healthCheckPath: /health
     envVars:
       - key: PORT
         value: 4000
