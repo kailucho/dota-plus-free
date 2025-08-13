@@ -49,7 +49,6 @@ jobs:
       - name: Build Lambda bundle
         run: npm run build:lambda
 
-      # Usa OIDC con el rol que creaste en IAM
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
