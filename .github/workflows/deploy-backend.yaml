@@ -1,18 +1,19 @@
 name: Deploy Backend to Lambda (Serverless)
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
     paths:
-      - "packages/@dba/server/**"
-      - ".github/workflows/deploy-backend.yml"
+      - "packages/server/**"
+      - ".github/workflows/deploy-backend.yaml"
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: packages/@dba/server
+        working-directory: packages/server
     permissions:
       id-token: write   # OIDC
       contents: read
@@ -28,8 +29,8 @@ jobs:
           cache: "npm"
           cache-dependency-path: |
             package-lock.json
-            packages/@dba/shared/package-lock.json
-            packages/@dba/server/package-lock.json
+            packages/shared/package-lock.json
+            packages/server/package-lock.json
 
       - name: Install (root)
         run: npm ci --ignore-scripts
