@@ -11,16 +11,11 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      AWS_ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
     defaults:
       run:
         working-directory: packages/server
     permissions:
-      id-token: write   # OIDC
+      id-token: write
       contents: read
 
     steps:
@@ -39,39 +34,11 @@ jobs:
 
       - name: Install (root)
         run: npm ci --ignore-scripts
+        working-directory: .
 
-      # Si @dba/shared necesita build previo (TS, etc.)
       - name: Build shared (optional)
         run: npm run -w @dba/shared build || true
         working-directory: .
 
       - name: Install Serverless CLI
         run: npm i -g serverless
-
-      - name: Build Lambda bundle
-        run: npm run build:lambda
-
-      - name: Configure AWS credentials (OIDC)
-        if: env.AWS_ROLE_TO_ASSUME != ''
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: ${{ env.AWS_ROLE_TO_ASSUME }}
-          aws-region: ${{ env.AWS_REGION != '' && env.AWS_REGION || 'sa-east-1' }}
-          role-session-name: github-actions-dba
-
-      - name: Configure AWS credentials (Static Keys)
-        if: env.AWS_ROLE_TO_ASSUME == '' && env.AWS_ACCESS_KEY_ID != '' && env.AWS_SECRET_ACCESS_KEY != ''
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION != '' && env.AWS_REGION || 'sa-east-1' }}
-
-      - name: Fail if AWS credentials are missing
-        if: env.AWS_ROLE_TO_ASSUME == '' && (env.AWS_ACCESS_KEY_ID == '' || env.AWS_SECRET_ACCESS_KEY == '')
-        run: |
-          echo "::error::Missing AWS credentials. Set AWS_ROLE_TO_ASSUME for OIDC, or AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY (with optional AWS_REGION)." 
-          exit 1
-
-      - name: Deploy (prod)
-        run: serverless deploy --stage prod
