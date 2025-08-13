@@ -25,7 +25,7 @@ package:
   individually: false
   patterns:
     - "!**/*"
-    - dist/lambda.mjs               # bundle generado por build:lambda
+    - dist/lambda.cjs               # bundle generado por build:lambda
 
 functions:
   api:
