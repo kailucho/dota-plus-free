@@ -7,17 +7,6 @@ import suggestRouter, { tools } from "./routes/suggest.js";
 import tickExtract from "./routes/tickExtract.js";
 import { sumStartingGold } from "./lib/costs.js";
 
-/**
- * createApp
- * Express app factory shared by local dev server and Lambda handler.
- * - CORS: configurable via ALLOWED_ORIGIN (comma-separated) or * by default
- * - JSON body parsing
- * - Healthcheck and sample hello route
- * - Existing routes: /init, /tick, /suggest, /health
- *
- * Note: API Gateway HTTP API payload limit is ~10MB. For file uploads, prefer
- * S3 presigned URLs instead of multipart uploads through the API.
- */
 export function createApp() {
   const app = express();
 
