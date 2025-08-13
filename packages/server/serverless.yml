@@ -7,16 +7,16 @@ provider:
   runtime: nodejs20.x
   architecture: arm64
   region: sa-east-1
+  stage: ${opt:stage, 'dev'}        # por defecto 'dev'
   memorySize: 256
   timeout: 10
-  stage: ${opt:stage, 'dev'}
   environment:
     NODE_OPTIONS: "--enable-source-maps"
-    NODE_ENV: ${self:provider.stage}                # ← dentro de environment
-    OPENAI_API_KEY: ${ssm:/dba/dev/OPENAI_API_KEY~true}
+    NODE_ENV: ${sls:stage}          # 'dev' por defecto
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY}   # <-- se inyecta desde el workflow/entorno
   httpApi:
     cors:
-      # Durante desarrollo, abierto. En prod: reemplaza por tu dominio de GH Pages.
+      # En dev abierto; en prod restringe a tu dominio de GitHub Pages (p.ej. https://kailucho.github.io)
       allowedOrigins:
         - "*"
       allowedHeaders:
@@ -28,26 +28,26 @@ provider:
         - PATCH
         - DELETE
         - OPTIONS
-      allowCredentials: false                       # ← evita conflicto con "*"
+      allowCredentials: false
 
 package:
   individually: false
   patterns:
     - "!**/*"
-    - dist/lambda.mjs
+    - dist/lambda.mjs               # bundle generado por esbuild (build:lambda)
 
 functions:
   api:
-    handler: dist/lambda.handler
-    name: dba-api-${self:provider.stage}
+    name: dba-api-${sls:stage}
     description: "@dba/server Express on Lambda via serverless-http"
-    architecture: arm64
+    handler: dist/lambda.handler
     runtime: nodejs20.x
+    architecture: arm64
     memorySize: 256
     timeout: 10
     events:
       - httpApi:
-          method: ANY                               # ← recomendado en mayúsculas
+          method: ANY
           path: /{proxy+}
       - httpApi:
           method: GET
@@ -56,5 +56,5 @@ functions:
 plugins: []
 
 custom:
-  # Build happens outside via npm script using esbuild; no serverless-esbuild plugin needed
-  # Tip: In prod, restrict CORS
+  # El build se hace fuera con esbuild (npm run build:lambda).
+  # En prod, cambia CORS para permitir solo tu dominio de Pages.
