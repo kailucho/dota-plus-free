@@ -1,6 +1,6 @@
 service: dba-server
 
-frameworkVersion: "4"
+frameworkVersion: "^3.39.0"
 
 provider:
   name: aws

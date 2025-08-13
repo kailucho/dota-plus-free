@@ -40,12 +40,16 @@ jobs:
         run: npm run -w @dba/shared build || true
         working-directory: .
 
-      - name: Install Serverless CLI
-        run: npm i -g serverless
+      - name: Install Serverless CLI (v3)
+        run: npm i -g serverless@3
+
+      - name: Check Serverless version
+        run: serverless --version
 
       - name: Build Lambda bundle
         run: npm run build:lambda
 
+      # Usa OIDC con el rol que creaste en IAM
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
