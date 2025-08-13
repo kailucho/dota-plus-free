@@ -1,0 +1,61 @@
+service: dba-server
+
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  architecture: arm64
+  region: sa-east-1
+  memorySize: 256
+  timeout: 10
+  stage: ${opt:stage, 'dev'}
+  environment:
+    NODE_OPTIONS: "--enable-source-maps"
+  NODE_ENV: ${self:provider.stage}
+  OPENAI_API_KEY: ${ssm:/dba/${self:provider.stage}/OPENAI_API_KEY~true}
+  httpApi:
+    cors:
+      # Allow all during early stages; tighten later to your GitHub Pages origin
+      # e.g. https://<user>.github.io
+      allowedOrigins:
+        - "*"
+      allowedHeaders:
+        - "*"
+      allowedMethods:
+        - GET
+        - POST
+        - PUT
+        - PATCH
+        - DELETE
+        - OPTIONS
+      allowCredentials: true
+
+package:
+  individually: false
+  patterns:
+    - "!**/*"
+    - dist/lambda.mjs
+
+functions:
+  api:
+    handler: dist/lambda.handler
+    name: dba-api-${self:provider.stage}
+    description: "@dba/server Express on Lambda via serverless-http"
+    architecture: arm64
+    runtime: nodejs20.x
+    memorySize: 256
+    timeout: 10
+    events:
+      - httpApi:
+          method: any
+          path: /{proxy+}
+      - httpApi:
+          method: get
+          path: /health
+
+plugins: []
+
+custom:
+  # Build happens outside via npm script using esbuild; no serverless-esbuild plugin needed
+  # Tip: To restrict CORS in prod later, set provider.httpApi.cors.allowedOrigins to your GH Pages domain.

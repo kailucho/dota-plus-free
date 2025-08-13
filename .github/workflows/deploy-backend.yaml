@@ -1,0 +1,55 @@
+name: Deploy Backend to Lambda (Serverless)
+
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - "packages/@dba/server/**"
+      - ".github/workflows/deploy-backend.yml"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: packages/@dba/server
+    permissions:
+      id-token: write   # OIDC
+      contents: read
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: |
+            package-lock.json
+            packages/@dba/shared/package-lock.json
+            packages/@dba/server/package-lock.json
+
+      - name: Install (root)
+        run: npm ci --ignore-scripts
+
+      # Si @dba/shared necesita build previo (TS, etc.)
+      - name: Build shared (optional)
+        run: npm run -w @dba/shared build || true
+        working-directory: .
+
+      - name: Install Serverless CLI
+        run: npm i -g serverless
+
+      - name: Build Lambda bundle
+        run: npm run build:lambda
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::<TU_AWS_ACCOUNT_ID>:role/GitHubOIDC-ServerlessDeploy
+          aws-region: sa-east-1
+
+      - name: Deploy (prod)
+        run: serverless deploy --stage prod
