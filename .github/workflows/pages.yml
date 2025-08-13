@@ -2,7 +2,7 @@ name: Deploy Web to GitHub Pages
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -21,8 +21,8 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'npm'
+          node-version: "20"
+          cache: "npm"
       - name: Install
         run: npm ci
       - name: Build web
@@ -30,6 +30,10 @@ jobs:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
           BASE_PATH: /${{ github.event.repository.name }}/
         run: npm run -w @dba/web build
+      - name: Check VITE_API_URL is set
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+        run: test -n "$VITE_API_URL"
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
