@@ -13,7 +13,7 @@ provider:
   environment:
     NODE_OPTIONS: "--enable-source-maps"
     NODE_ENV: ${self:provider.stage}                # ← dentro de environment
-    OPENAI_API_KEY: ${ssm:/dba/${self:provider.stage}/OPENAI_API_KEY~true}
+    OPENAI_API_KEY: ${ssm:/dba/dev/OPENAI_API_KEY~true}
   httpApi:
     cors:
       # Durante desarrollo, abierto. En prod: reemplaza por tu dominio de GH Pages.
