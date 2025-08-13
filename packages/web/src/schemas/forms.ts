@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { RoleEnum } from "@dba/shared/src/schemas";
+import { RoleEnum } from "@dba/shared";
 
 export const InitFormSchema = z.object({
   rank: z.string().min(1, "Requerido"),

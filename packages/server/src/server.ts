@@ -2,11 +2,7 @@ import express from "express";
 import cors from "cors";
 import "dotenv/config";
 import OpenAI from "openai";
-import {
-  InitPayload,
-  NOW_PATCH,
-  sampleResponseBase,
-} from "@dba/shared/src/schemas.js";
+import { InitPayload, NOW_PATCH, sampleResponseBase } from "@dba/shared";
 import suggestRouter, { tools } from "./routes/suggest.js";
 import tickExtract from "./routes/tickExtract.js";
 import { sumStartingGold } from "./lib/costs.js";

@@ -1,4 +1,4 @@
-import type { TInitPayload, TTickPayload, TResponseJSON } from "@dba/shared/src/schemas";
+import type { TInitPayload, TTickPayload, TResponseJSON } from "@dba/shared";
 
 const API = import.meta.env.VITE_API_URL ?? "http://localhost:4000";
 
