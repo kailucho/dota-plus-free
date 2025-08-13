@@ -7,34 +7,25 @@ provider:
   runtime: nodejs20.x
   architecture: arm64
   region: sa-east-1
-  stage: ${opt:stage, 'dev'}        # por defecto 'dev'
+  stage: ${opt:stage, 'dev'}        # default: dev
   memorySize: 256
   timeout: 10
   environment:
     NODE_OPTIONS: "--enable-source-maps"
-    NODE_ENV: ${sls:stage}          # 'dev' por defecto
-    OPENAI_API_KEY: ${env:OPENAI_API_KEY}   # <-- se inyecta desde el workflow/entorno
+    NODE_ENV: ${sls:stage}          # 'dev'
+    OPENAI_API_KEY: ${env:OPENAI_API_KEY}   # ← la inyecta el workflow
   httpApi:
     cors:
-      # En dev abierto; en prod restringe a tu dominio de GitHub Pages (p.ej. https://kailucho.github.io)
-      allowedOrigins:
-        - "*"
-      allowedHeaders:
-        - "*"
-      allowedMethods:
-        - GET
-        - POST
-        - PUT
-        - PATCH
-        - DELETE
-        - OPTIONS
+      allowedOrigins: ["*"]
+      allowedHeaders: ["*"]
+      allowedMethods: [GET, POST, PUT, PATCH, DELETE, OPTIONS]
       allowCredentials: false
 
 package:
   individually: false
   patterns:
     - "!**/*"
-    - dist/lambda.mjs               # bundle generado por esbuild (build:lambda)
+    - dist/lambda.mjs               # bundle generado por build:lambda
 
 functions:
   api:
@@ -56,5 +47,4 @@ functions:
 plugins: []
 
 custom:
-  # El build se hace fuera con esbuild (npm run build:lambda).
-  # En prod, cambia CORS para permitir solo tu dominio de Pages.
+  # Build con esbuild se hace fuera (npm run build:lambda)

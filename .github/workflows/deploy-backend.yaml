@@ -1,9 +1,9 @@
-name: Deploy Backend to Lambda (Serverless)
+name: Deploy Backend to Lambda (Serverless) — DEV
 
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main ]                     # ajusta si usas otra rama
     paths:
       - "packages/server/**"
       - ".github/workflows/deploy-backend.yml"
@@ -43,12 +43,10 @@ jobs:
       - name: Install Serverless CLI (v3)
         run: npm i -g serverless@3
 
-      - name: Check Serverless version
-        run: serverless --version
-
       - name: Build Lambda bundle
         run: npm run build:lambda
 
+      # 1) Credenciales OIDC (rol en tu cuenta 397348202466)
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -56,8 +54,27 @@ jobs:
           aws-region: sa-east-1
           role-session-name: github-actions-dba
 
-      - name: Who am I?
-        run: aws sts get-caller-identity
+      # 2) Leer SSM DEV y exportar al entorno para Serverless
+      - name: Read OPENAI_API_KEY from SSM (dev)
+        run: |
+          VALUE=$(aws ssm get-parameter \
+            --name "/dba/dev/OPENAI_API_KEY" \
+            --with-decryption \
+            --region sa-east-1 \
+            --query "Parameter.Value" \
+            --output text)
+          if [ -z "$VALUE" ] || [ "$VALUE" = "None" ]; then
+            echo "::error::No se pudo leer /dba/dev/OPENAI_API_KEY en sa-east-1"
+            exit 1
+          fi
+          echo "OPENAI_API_KEY=$VALUE" >> $GITHUB_ENV
 
-      - name: Deploy (prod)
-        run: serverless deploy --stage prod
+      # (Opcional) Chequeo: no imprime el secreto, solo longitud
+      - name: Check OPENAI_API_KEY is set
+        run: |
+          echo "OPENAI_API_KEY length: ${#OPENAI_API_KEY}"
+          test -n "$OPENAI_API_KEY"
+
+      # 3) Deploy a DEV (sa-east-1)
+      - name: Deploy (dev)
+        run: serverless deploy --stage dev
