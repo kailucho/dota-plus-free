@@ -1,0 +1,75 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-bg-950 text-slate-200 antialiased;
+  }
+}
+
+@layer utilities {
+  /* Fondo con viñeteado sutil */
+  .app-bg {
+    background: radial-gradient(
+        1200px 600px at 50% -5%,
+        rgba(255, 255, 255, 0.06),
+        transparent 60%
+      ),
+      radial-gradient(
+        900px 500px at -10% 20%,
+        rgba(255, 255, 255, 0.04),
+        transparent 55%
+      ),
+      radial-gradient(
+        900px 500px at 110% 30%,
+        rgba(255, 255, 255, 0.04),
+        transparent 55%
+      ),
+      linear-gradient(to bottom, #0a0f17, #0d141f 35%, #0a0f17 100%);
+  }
+  /* Panel tipo glass */
+  .glass-card {
+    @apply bg-card shadow-card-elev border border-card-stroke rounded-2xl;
+    backdrop-filter: blur(6px);
+  }
+  /* Encabezado principal dorado */
+  .title-gold {
+    @apply font-display text-3xl sm:text-4xl tracking-wide;
+    background: linear-gradient(180deg, #f2e9c7 0%, #e3c46a 65%, #bfa14a 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.35);
+    letter-spacing: 0.5px;
+  }
+  /* Subtítulos/labels */
+  .subtle-label {
+    @apply text-slate-300;
+  }
+  /* Inputs oscuros */
+  .input-dark {
+    @apply bg-bg-900/70 border border-card-stroke text-slate-200 placeholder:text-slate-500;
+  }
+  /* Botón contorno “elegante” */
+  .btn-outline-dark {
+    @apply border border-card-stroke text-slate-200 hover:bg-white/5;
+  }
+  /* Badge minimal */
+  .badge-muted {
+    @apply bg-white/5 border border-card-stroke text-slate-200;
+  }
+
+  /* Sutilezas de marca */
+  .divider-brand {
+    @apply border-t border-brand-400/20;
+  }
+  .hover-surface-brand:hover {
+    @apply bg-brand-300/10;
+  }
+}
