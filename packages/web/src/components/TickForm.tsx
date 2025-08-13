@@ -273,6 +273,7 @@ export function TickForm({
                   variant="outline"
                   size="sm"
                   className="btn-outline-dark"
+                  onClick={() => fileInputRef.current?.click()}
                 >
                   {imgFile ? "Cambiar imagen" : "Elegir imagen"}
                 </Button>
