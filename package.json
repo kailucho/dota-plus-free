@@ -9,7 +9,7 @@
     "dev": "concurrently -n API,WEB -c blue,magenta \"npm:dev:@dba/server\" \"npm:dev:@dba/web\"",
     "dev:@dba/server": "npm run -w @dba/server dev",
     "dev:@dba/web": "npm run -w @dba/web dev",
-    "build": "npm run -w @dba/server build && npm run -w @dba/web build",
+    "build": "npm run -w @dba/shared build && npm run -w @dba/server build && npm run -w @dba/web build",
     "start": "npm run -w @dba/server start"
   },
   "devDependencies": {
