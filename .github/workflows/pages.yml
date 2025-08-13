@@ -22,6 +22,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: "20"
+      - name: Build shared
+        run: npm run -w @dba/shared build
           cache: "npm"
       - name: Install
         run: npm ci
