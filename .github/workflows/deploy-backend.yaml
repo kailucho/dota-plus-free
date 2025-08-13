@@ -49,8 +49,9 @@ jobs:
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::<TU_AWS_ACCOUNT_ID>:role/GitHubOIDC-ServerlessDeploy
-          aws-region: sa-east-1
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ secrets.AWS_REGION }}
+          role-session-name: github-actions-dba
 
       - name: Deploy (prod)
         run: serverless deploy --stage prod
