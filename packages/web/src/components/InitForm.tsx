@@ -14,10 +14,11 @@ import { HeroIcon } from "./HeroIcon";
 export type InitFormProps = {
   disabled?: boolean;
   onSubmit: (payload: InitFormValues) => void | Promise<void>;
-  onReset?: () => void;
+  onReset?: (vals: InitFormValues) => void;
+  initialValues?: InitFormValues;
 };
 
-export function InitForm({ disabled, onSubmit, onReset }: InitFormProps) {
+export function InitForm({ disabled, onSubmit, onReset, initialValues }: InitFormProps) {
   const DEFAULT_ENEMIES = React.useMemo(
     () => ["Void", "Jakiro", "Axe", "Clinkz", "Zeus"],
     []
@@ -25,14 +26,15 @@ export function InitForm({ disabled, onSubmit, onReset }: InitFormProps) {
 
   const form = useForm<InitFormValues>({
     resolver: zodResolver(InitFormSchema),
-    defaultValues: {
-      rank: "Legend",
-      hero: "Abaddon",
-      role: "Hard Support",
-      enemies: DEFAULT_ENEMIES,
-      patch: "7.39d",
-      constraints: "",
-    },
+    defaultValues:
+      initialValues ?? {
+        rank: "Legend",
+        hero: "Abaddon",
+        role: "Hard Support",
+        enemies: DEFAULT_ENEMIES,
+        patch: "7.39d",
+        constraints: "",
+      },
     mode: "onChange",
   });
 
@@ -168,15 +170,9 @@ export function InitForm({ disabled, onSubmit, onReset }: InitFormProps) {
               type="button"
               variant="outline"
               onClick={() => {
-                form.reset({
-                  rank: "Legend",
-                  hero: "Abaddon",
-                  role: "Hard Support",
-                  enemies: DEFAULT_ENEMIES,
-                  patch: "7.39d",
-                  constraints: "",
-                });
-                onReset?.();
+                const vals = form.getValues();
+                form.reset(vals);
+                onReset?.(vals);
               }}
             >
               Reiniciar partida

@@ -52,6 +52,7 @@ export function App() {
         >
           <InitForm
             disabled={started}
+            initialValues={initPayload ?? undefined}
             onSubmit={async (payload) => {
               // cancel previous suggest
               suggestAbortRef.current?.abort("new-suggest");
@@ -69,11 +70,11 @@ export function App() {
                 setCollapsedLive(true);
               }
             }}
-            onReset={() => {
+            onReset={(vals) => {
               setStarted(false);
               setInitResp(null);
               setTickResp(null);
-              setInitPayload(null);
+              setInitPayload(vals as any);
               setTickLocked(false);
               setTickLoading(false);
               setCollapsedInit(false);
