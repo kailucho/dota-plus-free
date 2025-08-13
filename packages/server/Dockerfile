@@ -11,7 +11,9 @@ RUN npm ci --workspaces
 FROM node:20-alpine AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages ./packages
+# copy root workspace files needed by npm -w
+COPY package.json package-lock.json tsconfig.base.json ./
+# copy sources
 COPY packages/shared ./packages/shared
 COPY packages/server ./packages/server
 RUN npm run -w @dba/shared build \

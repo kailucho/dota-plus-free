@@ -5,7 +5,9 @@ services:
     plan: free
     autoDeploy: true
     region: oregon
-    dockerfilePath: packages/server/Dockerfile
+  dockerfilePath: packages/server/Dockerfile
+  buildCommand: ""
+  startCommand: ""
     healthCheckPath: /health
     envVars:
       - key: PORT
