@@ -4,7 +4,7 @@ services:
     env: docker
     plan: free
     autoDeploy: true
-    region: frankfurt
+  region: oregon
     dockerfilePath: packages/server/Dockerfile
     healthCheckPath: /health
     envVars:
