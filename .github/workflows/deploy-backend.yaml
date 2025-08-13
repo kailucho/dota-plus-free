@@ -6,7 +6,7 @@ on:
     branches: [ main ]
     paths:
       - "packages/server/**"
-      - ".github/workflows/deploy-backend.yaml"
+      - ".github/workflows/deploy-backend.yml"
 
 jobs:
   deploy:
@@ -42,3 +42,19 @@ jobs:
 
       - name: Install Serverless CLI
         run: npm i -g serverless
+
+      - name: Build Lambda bundle
+        run: npm run build:lambda
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::397348202466:role/GitHubOIDC-ServerlessDeploy
+          aws-region: sa-east-1
+          role-session-name: github-actions-dba
+
+      - name: Who am I?
+        run: aws sts get-caller-identity
+
+      - name: Deploy (prod)
+        run: serverless deploy --stage prod
