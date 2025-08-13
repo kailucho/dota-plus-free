@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: dba-server
+    env: docker
+    plan: free
+    autoDeploy: true
+    region: frankfurt
+    dockerfilePath: packages/server/Dockerfile
+  healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 4000
+      - key: NODE_ENV
+        value: production
+      - key: OPENAI_API_KEY
+        sync: false # set in Render dashboard

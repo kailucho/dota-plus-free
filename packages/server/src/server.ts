@@ -12,8 +12,22 @@ import tickExtract from "./routes/tickExtract.js";
 import { sumStartingGold } from "./lib/costs.js";
 
 const app = express();
-app.use(cors());
+
+// CORS: allow specific origins from env in production, or allow all by default
+const allowedOrigins = (process.env.ALLOWED_ORIGIN || "")
+  .split(",")
+  .map((s) => s.trim())
+  .filter(Boolean);
+app.use(
+  cors({
+    origin: allowedOrigins.length ? allowedOrigins : true,
+    credentials: true,
+  })
+);
 app.use(express.json());
+
+// Healthcheck for platform load balancers
+app.get("/health", (_req, res) => res.status(200).send("ok"));
 
 app.post("/init", (req, res) => {
   const parsed = InitPayload.safeParse(req.body);
