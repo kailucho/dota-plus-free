@@ -20,6 +20,7 @@ export function App() {
     const [collapsedInitOrder, setCollapsedInitOrder] = useState(false);
     const [collapsedLive, setCollapsedLive] = useState(false);
     const tickRespRef = useRef(null);
+    const tickMinuteRef = useRef(null);
     const suggestAbortRef = useRef(null);
     const tickAbortRef = useRef(null);
     useEffect(() => {
@@ -55,7 +56,6 @@ export function App() {
                                 setInitResp(resp);
                                 setStarted(true);
                                 setInitPayload(payload); // keep original for UI
-                                const items = (resp.purchase_order ?? []).map((r) => r.item);
                                 if ((resp.purchase_order ?? []).length > 0) {
                                     setCollapsedInit(true);
                                     setCollapsedLive(true);
@@ -70,7 +70,7 @@ export function App() {
                                 setCollapsedInit(false);
                                 setCollapsedInitOrder(false);
                                 setCollapsedLive(false);
-                            } }) }), initResp && (_jsx(CollapsibleCard, { title: "Orden de compra recomendada", collapsed: collapsedInitOrder, onToggle: setCollapsedInitOrder, className: "glass-card mb-6", children: _jsx(PurchaseList, { order: initResp.purchase_order ?? [] }) })), initResp && (initResp.purchase_order ?? []).length > 0 && (_jsx(CollapsibleCard, { title: "Actualizaciones en vivo", collapsed: collapsedLive, onToggle: setCollapsedLive, className: "glass-card", children: _jsx(TickForm, { disabled: !started || tickLocked, loading: tickLoading, enemies: initPayload?.enemies ?? [], hero: initPayload?.hero, rank: initPayload?.rank, role: initPayload?.role, onSubmit: async (payload) => {
+                            } }) }), initResp && (_jsx(CollapsibleCard, { title: "Orden de compra recomendada", collapsed: collapsedInitOrder, onToggle: setCollapsedInitOrder, className: "glass-card mb-6", children: _jsx(PurchaseList, { order: initResp.purchase_order ?? [] }) })), initResp && (initResp.purchase_order ?? []).length > 0 && (_jsx(CollapsibleCard, { title: "Actualizaciones en vivo", collapsed: collapsedLive, onToggle: setCollapsedLive, className: "glass-card", children: _jsx(TickForm, { disabled: !started || tickLocked, loading: tickLoading, enemies: initPayload?.enemies ?? [], hero: initPayload?.hero, rank: initPayload?.rank, role: initPayload?.role, minuteRef: tickMinuteRef, onSubmit: async (payload) => {
                                 setTickLocked(true);
                                 setTickLoading(true);
                                 try {
@@ -99,8 +99,12 @@ export function App() {
                                 }, 50);
                             } }) })), tickResp && (_jsx("div", { ref: tickRespRef, children: _jsxs(Card, { className: "glass-card mt-6", children: [_jsx(CardHeader, { children: _jsx(CardTitle, { children: "Resultados (actualizaci\u00F3n)" }) }), _jsxs(CardContent, { children: [_jsx(PurchaseList, { order: tickResp.purchase_order ?? [] }), tickLocked && (_jsx("div", { className: "mt-4", children: _jsx(Button, { type: "button", variant: "outline", onClick: () => {
                                                     setTickLocked(false);
-                                                    // Al crear nuevo tick, re-abrimos la sección de live update
-                                                    setCollapsedLive(false);
+                                                    setCollapsedLive(false); // re-abrir
+                                                    // Enfocar minuto para siguiente actualización
+                                                    requestAnimationFrame(() => {
+                                                        tickMinuteRef.current?.focus();
+                                                        tickMinuteRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                                                    });
                                                 }, children: "Crear nuevo tick" }) }))] })] }) }))] })] }));
 }
 // (InitForm y TickForm se moved to components/*.tsx)

@@ -1,4 +1,4 @@
-import type { TInitPayload, TTickPayload, TResponseJSON } from "@dba/shared";
+import type { TInitPayload, TResponseJSON } from "@dba/shared";
 
 // Normalize base URL (remove trailing slashes) to avoid // when joining paths
 const API = (import.meta.env.VITE_API_URL ?? "http://localhost:4000").replace(

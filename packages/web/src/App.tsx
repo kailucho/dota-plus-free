@@ -81,7 +81,6 @@ export function App() {
               setInitResp(resp);
               setStarted(true);
               setInitPayload(payload as any); // keep original for UI
-              const items = (resp.purchase_order ?? []).map((r) => r.item);
               if ((resp.purchase_order ?? []).length > 0) {
                 setCollapsedInit(true);
                 setCollapsedLive(true);
