@@ -1,16 +1,26 @@
 import OpenAI from "openai";
-import http from "node:http";
 
-// Centralized OpenAI client with keep-alive & optional timeout.
-// Reused by all route helpers to avoid creating multiple TCP connections.
+// Nota: evitamos usar http.Agent personalizado porque en algunos entornos
+// (edge / fetch polyfill) el socket subyacente no expone setTimeout y provoca
+// errores tipo "this.socket.setTimeout is not a function" dentro del SDK.
+// Node >=18 ya trae un fetch con keep-alive razonable.
+
+// Centralized OpenAI client. Timeout se maneja vía AbortController a nivel
+// de capa superior si es necesario. Aquí mantenemos configuración mínima
+// para máxima compatibilidad (GitHub Actions / Pages preview, etc.).
 const OPENAI_TIMEOUT_MS = Number(process.env.OPENAI_TIMEOUT_MS || 60_000);
 
-export const openaiClient = new OpenAI({
+const baseConfig: any = {
   apiKey: process.env.OPENAI_API_KEY!,
-  timeout: OPENAI_TIMEOUT_MS,
-  // @ts-ignore Pass through to internal fetch
-  httpAgent: new http.Agent({ keepAlive: true, maxSockets: 50 }),
-});
+};
+
+// Solo añadimos timeout si estamos claramente en entorno Node (no edge)
+// para evitar que el SDK intente acceder a propiedades inexistentes.
+if (typeof process !== "undefined" && process?.versions?.node) {
+  baseConfig.timeout = OPENAI_TIMEOUT_MS;
+}
+
+export const openaiClient = new OpenAI(baseConfig);
 
 if (!process.env.OPENAI_API_KEY) {
   // eslint-disable-next-line no-console

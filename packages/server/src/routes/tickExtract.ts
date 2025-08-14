@@ -1,15 +1,8 @@
 import { Router } from "express";
-import multer from "multer";
 import type { Responses } from "openai/resources/responses";
 import callWithTools from "../llm/callWithTools.js";
 
-// Mantener multer solo para compatibilidad retro (si aún se envía multipart), pero la nueva vía es JSON con image_b64.
-const upload = multer({
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 8 * 1024 * 1024 },
-});
-// Cliente centralizado reutilizable
-import openaiClient from "../llm/openaiClient.js";
+// Eliminado multer/upload: ya no se procesa multipart aquí; solo JSON base64.
 import { EMIT_ITEM_ORDER } from "../llm/purchaseOrderHelpers.js";
 const router = Router();
 
@@ -76,10 +69,7 @@ router.post("/tick/extract", async (req, res) => {
       }
     }
 
-    if (!b64Image && req.file) {
-      const b64 = req.file.buffer.toString("base64");
-      b64Image = `data:${req.file.mimetype};base64,${b64}`;
-    }
+  // Ya no se acepta multipart (req.file); únicamente JSON con image_b64.
 
     if (!b64Image) return res.status(400).json({ error: "no_image" });
     console.log("/tick/extract body keys", Object.keys(body));

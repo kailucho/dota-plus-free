@@ -45,14 +45,27 @@ export async function callWithTools(
     });
   }
 
-  const resp = await openaiClient.responses.create({
-    model: OPENAI_MODEL,
-    input,
-    tools,
-    store: true,
-    reasoning: { effort: "minimal" },
-    tool_choice: { type: "function", name: EMIT_ITEM_ORDER },
-  });
+  let resp: any;
+  try {
+    resp = await openaiClient.responses.create({
+      model: OPENAI_MODEL,
+      input,
+      tools,
+      store: true,
+      reasoning: { effort: "minimal" },
+      tool_choice: { type: "function", name: EMIT_ITEM_ORDER },
+    });
+  } catch (err: any) {
+    // Normalizamos ciertos errores comunes para que el frontend pueda mostrar mensajes claros.
+    const msg = String(err?.message || err || "openai failed");
+    if (/socket\.setTimeout/i.test(msg)) {
+      throw new Error(
+        "OpenAI networking error (socket timeout unsupported en este runtime). Intenta de nuevo o revisa configuración de httpAgent/timeout. Detalle: " +
+          msg
+      );
+    }
+    throw err;
+  }
 
   const toolCall = extractFunctionCall(
     (resp as any)?.output ?? [],
