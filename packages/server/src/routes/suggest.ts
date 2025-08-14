@@ -55,8 +55,18 @@ export { tools };
 
 router.post("/suggest", async (req, res) => {
   try {
-    req.setTimeout(REQUEST_TIMEOUT_MS);
-    res.setTimeout(REQUEST_TIMEOUT_MS);
+    // En Lambda (serverless-http) a veces req.socket no está inicializado y
+    // req.setTimeout termina intentando acceder a socket.setTimeout -> error.
+    try {
+      if (typeof (req as any).setTimeout === "function") {
+        (req as any).setTimeout(REQUEST_TIMEOUT_MS);
+      }
+    } catch {}
+    try {
+      if (typeof (res as any).setTimeout === "function") {
+        (res as any).setTimeout(REQUEST_TIMEOUT_MS);
+      }
+    } catch {}
 
     const body = (req.body || {}) as SuggestBodyBase;
 
