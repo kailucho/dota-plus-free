@@ -1,13 +1,16 @@
 import { Router } from "express";
 import multer from "multer";
-import OpenAI from "openai";
 import type { Responses } from "openai/resources/responses";
+import callWithTools from "../llm/callWithTools.js";
 
+// Mantener multer solo para compatibilidad retro (si aún se envía multipart), pero la nueva vía es JSON con image_b64.
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: { fileSize: 8 * 1024 * 1024 },
 });
-const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY! });
+// Cliente centralizado reutilizable
+import openaiClient from "../llm/openaiClient.js";
+import { EMIT_ITEM_ORDER } from "../llm/purchaseOrderHelpers.js";
 const router = Router();
 
 // JSON Schema de salida (solo lo pedido por el front para cada enemigo)
@@ -49,7 +52,7 @@ const extractSchema = {
 export const extractTools = [
   {
     type: "function",
-    name: "emit_tick_extract",
+    name: EMIT_ITEM_ORDER,
     description:
       "Devuelve los datos extraídos del screenshot en formato estructurado.",
     strict: false,
@@ -57,10 +60,29 @@ export const extractTools = [
   },
 ] satisfies Responses.Tool[];
 
-router.post("/tick/extract", upload.single("image"), async (req, res) => {
+// Nuevo modo: aceptar JSON { image_b64: "data:...base64...", enemies: [...]}.
+// También se mantiene compatibilidad con multipart (campo image) temporalmente.
+router.post("/tick/extract", async (req, res) => {
   try {
-    if (!req.file) return res.status(400).json({ error: "no_image" });
-    console.log("req.body", req.body);
+    // Detecta si viene base64 por JSON
+    let b64Image: string | null = null;
+    const body: any = req.body || {};
+    if (body.image_b64 && typeof body.image_b64 === "string") {
+      // Acepta tanto data URL completa como solo la parte base64 (asume image/png)
+      if (body.image_b64.startsWith("data:")) {
+        b64Image = body.image_b64;
+      } else if (/^[A-Za-z0-9+/=]+$/.test(body.image_b64)) {
+        b64Image = `data:image/png;base64,${body.image_b64}`;
+      }
+    }
+
+    if (!b64Image && req.file) {
+      const b64 = req.file.buffer.toString("base64");
+      b64Image = `data:${req.file.mimetype};base64,${b64}`;
+    }
+
+    if (!b64Image) return res.status(400).json({ error: "no_image" });
+    console.log("/tick/extract body keys", Object.keys(body));
     // hints opcionales: soporta múltiples formas de enviar enemies
     const enemies: string[] = [];
     // 1) Array directo: enemies: ["Void", ...]
@@ -111,9 +133,7 @@ router.post("/tick/extract", upload.single("image"), async (req, res) => {
             : (seen.add(e.toLowerCase()), true))
       );
 
-    // convierte a base64 data URL
-    const b64 = req.file.buffer.toString("base64");
-    const dataUrl = `data:${req.file.mimetype};base64,${b64}`;
+    // b64Image ya preparado arriba
 
     const system = `
     Eres un extractor de datos de Dota 2. Recibirás un screenshot de la tabla de héroes.
@@ -142,41 +162,21 @@ router.post("/tick/extract", upload.single("image"), async (req, res) => {
       .filter(Boolean)
       .join("\n");
 
-    const response = await client.responses.create({
-      model: "gpt-4.1",
-      temperature: 0,
-      input: [
-        { role: "system", content: system },
-        { role: "user", content: `Extrae datos del screenshot.\n${hints}` },
-        {
-          role: "user",
-          content: [{ type: "input_image", image_url: dataUrl }] as any,
-        },
-      ],
+    const developer = `Rol developer (máxima prioridad):
+${system.trim()}
+REGLAS ADICIONALES:
+1. Responde SOLO con una llamada a emit_tick_extract.
+2. Sin texto libre fuera de la function call.
+3. No inventes héroes que no estén en la lista proporcionada.
+`;
+
+    const { toolCall } = await callWithTools({
+      developer,
+      user: `Extrae datos del screenshot.\n${hints}`,
       tools: extractTools,
+      b64Image: b64Image,
     });
-
-    // Extrae la llamada a la función con los datos estructurados
-    const out = (response as any).output ?? [];
-    const fn =
-      out.find(
-        (it: any) =>
-          it?.type === "function_call" && it?.name === "emit_tick_extract"
-      ) ??
-      out.find(
-        (it: any) =>
-          it?.type === "tool_call" && it?.name === "emit_tick_extract"
-      );
-
-    if (!fn) {
-      return res.status(502).json({ error: "no_tool_call", detail: response });
-    }
-
-    const args =
-      typeof (fn as any).arguments === "string"
-        ? JSON.parse((fn as any).arguments)
-        : (fn as any).arguments;
-    const json = args || {};
+    const json = JSON.parse((toolCall as any)?.arguments);
 
     // Normaliza héroes detectados vs lista enemies y restringe a esa lista en ese orden
     if (Array.isArray(json.enemy_status) && enemiesNorm.length) {

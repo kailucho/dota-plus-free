@@ -44,6 +44,14 @@ export function TickForm({ onSubmit, disabled, enemies, hero, rank, role, loadin
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [enemies]);
     // --- Autocompletar desde captura (auto-extract al elegir/soltar archivo)
+    async function fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(String(reader.result));
+            reader.onerror = (e) => reject(e);
+            reader.readAsDataURL(file);
+        });
+    }
     async function handleExtract(file) {
         const f = file ?? imgFile;
         if (!f)
@@ -51,16 +59,14 @@ export function TickForm({ onSubmit, disabled, enemies, hero, rank, role, loadin
         setExtracting(true);
         setExtractError(null);
         try {
-            const fd = new FormData();
-            fd.append("image", f);
-            if (hero)
-                fd.append("hero", hero);
-            if (rank)
-                fd.append("rank", rank);
-            if (role)
-                fd.append("role", role);
-            enemies.forEach((e, i) => fd.append(`enemies[${i}]`, e));
-            const r = await fetch(import.meta.env.VITE_API_URL + "/tick/extract", { method: "POST", body: fd });
+            const image_b64 = await fileToBase64(f);
+            const payload = { image_b64 };
+            payload.enemies = enemies;
+            const r = await fetch(import.meta.env.VITE_API_URL + "/tick/extract", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload),
+            });
             if (!r.ok)
                 throw new Error(await r.text());
             const data = await r.json();
@@ -72,12 +78,16 @@ export function TickForm({ onSubmit, disabled, enemies, hero, rank, role, loadin
                     const base = { hero: h, level: "", k: "", d: "", a: "" };
                     if (!match)
                         return base;
+                    const mkda = match.kda || {};
+                    const kVal = mkda.k ?? mkda.kills;
+                    const dVal = mkda.d ?? mkda.deaths;
+                    const aVal = mkda.a ?? mkda.assists;
                     return {
                         hero: h,
                         level: match.level != null ? String(match.level) : base.level,
-                        k: match.kda?.k != null ? String(match.kda.k) : base.k,
-                        d: match.kda?.d != null ? String(match.kda.d) : base.d,
-                        a: match.kda?.a != null ? String(match.kda.a) : base.a,
+                        k: kVal != null ? String(kVal) : base.k,
+                        d: dVal != null ? String(dVal) : base.d,
+                        a: aVal != null ? String(aVal) : base.a,
                     };
                 });
                 replace(merged);
@@ -85,12 +95,16 @@ export function TickForm({ onSubmit, disabled, enemies, hero, rank, role, loadin
             if (data.my_status?.level != null)
                 form.setValue("myLevel", String(data.my_status.level));
             if (data.my_status?.kda) {
-                if (data.my_status.kda.k != null)
-                    form.setValue("myK", String(data.my_status.kda.k));
-                if (data.my_status.kda.d != null)
-                    form.setValue("myD", String(data.my_status.kda.d));
-                if (data.my_status.kda.a != null)
-                    form.setValue("myA", String(data.my_status.kda.a));
+                const mkda = data.my_status.kda;
+                const kVal = mkda.k ?? mkda.kills;
+                const dVal = mkda.d ?? mkda.deaths;
+                const aVal = mkda.a ?? mkda.assists;
+                if (kVal != null)
+                    form.setValue("myK", String(kVal));
+                if (dVal != null)
+                    form.setValue("myD", String(dVal));
+                if (aVal != null)
+                    form.setValue("myA", String(aVal));
             }
         }
         catch (err) {
@@ -127,39 +141,37 @@ export function TickForm({ onSubmit, disabled, enemies, hero, rank, role, loadin
     return (_jsx("form", { onSubmit: form.handleSubmit((vals) => {
             if (disabled)
                 return;
-            const enemy_status = vals.enemies
-                .map((r) => {
+            const enemy_status = vals.enemies.map((r) => {
                 const out = { hero: r.hero };
                 if (r.level !== "")
                     out.level = Number(r.level);
                 const hasKDA = r.k !== "" || r.d !== "" || r.a !== "";
                 if (hasKDA)
                     out.kda = {
-                        k: Number(r.k || 0),
-                        d: Number(r.d || 0),
-                        a: Number(r.a || 0),
+                        kills: Number(r.k || 0),
+                        deaths: Number(r.d || 0),
+                        assists: Number(r.a || 0),
                     };
                 return out;
-            })
-                .filter((e) => e.level !== undefined || e.kda !== undefined);
+            });
             onSubmit({
                 minute: Number(vals.minute || 0),
                 my_status: {
-                    level: vals.myLevel ? Number(vals.myLevel) : undefined,
-                    kda: {
-                        k: vals.myK ? Number(vals.myK) : undefined,
-                        d: vals.myD ? Number(vals.myD) : undefined,
-                        a: vals.myA ? Number(vals.myA) : undefined,
-                    },
                     hero,
-                    rank,
                     role,
+                    rank,
+                    level: vals.myLevel ? Number(vals.myLevel) : 0,
+                    kda: {
+                        kills: Number(vals.myK || 0),
+                        deaths: Number(vals.myD || 0),
+                        assists: Number(vals.myA || 0),
+                    },
                 },
-                enemy_status: enemy_status.length ? enemy_status : undefined,
+                enemy_status,
             });
         }), children: _jsxs("fieldset", { disabled: !!disabled, className: "contents", children: [_jsxs("div", { className: "mb-4", children: [_jsxs("div", { className: "mb-2 flex items-center justify-between", children: [_jsx("div", { className: "text-sm font-medium text-slate-200", children: "Autocompletar con captura" }), _jsx(Button, { type: "button", variant: "ghost", size: "sm", onClick: () => setShowSample(true), className: "inline-flex items-center gap-2", title: "Ver ejemplo de captura", children: "Ejemplo" })] }), _jsxs("div", { className: `rounded-2xl border-2 border-dashed p-4 transition-colors ${dragActive
                                 ? "border-brand-400/70 bg-white/[.04]"
-                                : "border-card-stroke/70 bg-white/[.02] hover:bg-white/[.04] hover:border-brand-400/60"}`, onDragOver: onDropZoneDragOver, onDragLeave: onDropZoneDragLeave, onDrop: onDropZoneDrop, children: [_jsxs("label", { htmlFor: "tick-image", className: "group flex cursor-pointer items-center gap-3", children: [_jsxs("svg", { width: "22", height: "22", viewBox: "0 0 24 24", className: "opacity-80", children: [_jsx("rect", { x: "3", y: "6", width: "18", height: "12", rx: "3", stroke: "currentColor", fill: "none" }), _jsx("path", { d: "M8 14l2.8-2.8a1 1 0 011.4 0L15 14l2-2 3 3", stroke: "currentColor", fill: "none" })] }), _jsxs("div", { className: "flex-1", children: [_jsx("div", { className: "text-slate-100 text-sm", children: imgFile ? (_jsx("span", { className: "font-medium", children: imgFile.name })) : (_jsx("span", { className: "font-medium", children: "Arrastra una imagen o haz clic para subirla" })) }), _jsx("div", { className: "text-xs text-slate-400", children: "Intentaremos completar tu nivel/KDA y el de los enemigos (si es legible)." })] }), _jsx("div", { children: _jsx(Button, { type: "button", variant: "outline", size: "sm", className: "btn-outline-dark", onClick: () => fileInputRef.current?.click(), children: imgFile ? "Cambiar imagen" : "Elegir imagen" }) })] }), _jsx("input", { ref: fileInputRef, id: "tick-image", type: "file", accept: "image/*", className: "hidden", onChange: async (e) => {
+                                : "border-card-stroke/70 bg-white/[.02] hover:bg-white/[.04] hover:border-brand-400/60"}`, onDragOver: onDropZoneDragOver, onDragLeave: onDropZoneDragLeave, onDrop: onDropZoneDrop, children: [_jsxs("label", { htmlFor: "tick-image", className: "group flex cursor-pointer items-center gap-3", children: [_jsxs("svg", { width: "22", height: "22", viewBox: "0 0 24 24", className: "opacity-80", children: [_jsx("rect", { x: "3", y: "6", width: "18", height: "12", rx: "3", stroke: "currentColor", fill: "none" }), _jsx("path", { d: "M8 14l2.8-2.8a1 1 0 011.4 0L15 14l2-2 3 3", stroke: "currentColor", fill: "none" })] }), _jsxs("div", { className: "flex-1", children: [_jsx("div", { className: "text-slate-100 text-sm", children: imgFile ? (_jsx("span", { className: "font-medium", children: imgFile.name })) : (_jsx("span", { className: "font-medium", children: "Arrastra una imagen o haz clic para subirla" })) }), _jsx("div", { className: "text-xs text-slate-400", children: "Intentaremos completar tu nivel/KDA y el de los enemigos (si es legible). Se env\u00EDa en base64 (sin multipart)." })] }), _jsx("div", { children: _jsx(Button, { type: "button", variant: "outline", size: "sm", className: "btn-outline-dark", onClick: () => fileInputRef.current?.click(), children: imgFile ? "Cambiar imagen" : "Elegir imagen" }) })] }), _jsx("input", { ref: fileInputRef, id: "tick-image", type: "file", accept: "image/*", className: "hidden", onChange: async (e) => {
                                         const f = (e.currentTarget.files && e.currentTarget.files[0]) || null;
                                         setImgFile(f);
                                         setExtractError(null);
@@ -180,7 +192,7 @@ export function TickForm({ onSubmit, disabled, enemies, hero, rank, role, loadin
                                                         }), className: "w-14 h-8 px-2 py-1 text-xs", uiSize: "sm" }) })] }, row.id))) })] }) }))] }), _jsx("div", { className: "sticky bottom-0 mt-4 bg-bg-950/70 backdrop-blur border-t border-card-stroke py-3 rounded-t-xl", children: _jsxs("div", { className: "flex flex-wrap items-center gap-3", children: [_jsx(Button, { type: "submit", variant: "primary", disabled: !!disabled ||
                                     minute === "" ||
                                     enemiesRows.some((r) => r.level === "") ||
-                                    !!loading, "aria-live": "polite", children: loading ? "Enviando…" : "Enviar /tick" }), (minute === "" || enemiesRows.some((r) => r.level === "")) &&
+                                    !!loading, "aria-live": "polite", children: loading ? "Enviando…" : "Enviar actualización" }), (minute === "" || enemiesRows.some((r) => r.level === "")) &&
                                 !disabled &&
                                 !loading && (_jsxs("div", { className: "text-xs text-amber-500", children: [minute === "" ? "El minuto es obligatorio. " : null, enemiesRows.some((r) => r.level === "") ? "Completa el nivel de todos los enemigos." : null] })), _jsx(Button, { type: "button", variant: "ghost", onClick: () => {
                                     form.setValue("myLevel", "");
@@ -194,6 +206,6 @@ export function TickForm({ onSubmit, disabled, enemies, hero, rank, role, loadin
                                         d: "",
                                         a: "",
                                     })));
-                                }, className: "text-slate-300 hover:bg-white/5", children: "Limpiar" }), loading && (_jsxs("div", { className: "inline-flex items-center gap-2 text-sm text-slate-600", "aria-live": "polite", children: [_jsx("span", { className: "inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent", role: "status", "aria-label": "loading" }), "Cargando\u2026"] })), disabled && (_jsx("div", { className: "text-xs text-slate-500", children: "Inicia la partida con /init para habilitar /tick o pulsa \"Crear nuevo tick\"." }))] }) })] }) }));
+                                }, className: "text-slate-300 hover:bg-white/5", children: "Limpiar" }), loading && (_jsxs("div", { className: "inline-flex items-center gap-2 text-sm text-slate-600", "aria-live": "polite", children: [_jsx("span", { className: "inline-block h-4 w-4 animate-spin rounded-full border-2 border-current border-r-transparent", role: "status", "aria-label": "loading" }), "Cargando\u2026"] })), disabled && (_jsx("div", { className: "text-xs text-slate-500", children: "Inicia la partida con /init para habilitar actualizaciones o pulsa \"Crear nuevo tick\"." }))] }) })] }) }));
 }
 export default TickForm;

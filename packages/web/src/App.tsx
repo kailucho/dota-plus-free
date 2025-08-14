@@ -21,6 +21,7 @@ export function App() {
   const [collapsedInitOrder, setCollapsedInitOrder] = useState(false);
   const [collapsedLive, setCollapsedLive] = useState(false);
   const tickRespRef = useRef<HTMLDivElement | null>(null);
+  const tickMinuteRef = useRef<HTMLInputElement | null>(null);
   const suggestAbortRef = useRef<AbortController | null>(null);
   const tickAbortRef = useRef<AbortController | null>(null);
 
@@ -57,13 +58,29 @@ export function App() {
               // cancel previous suggest
               suggestAbortRef.current?.abort("new-suggest");
               suggestAbortRef.current = new AbortController();
-              const resp = await postSuggest(payload as any, {
+              // Nueva estructura unificada: minute 0 + my_status + enemy_status (niveles/kda en 0)
+              const unifiedPayload: any = {
+                minute: 0,
+                my_status: {
+                  hero: payload.hero,
+                  role: payload.role,
+                  rank: payload.rank,
+                  level: 0,
+                  kda: { kills: 0, deaths: 0, assists: 0 },
+                },
+                enemy_status: payload.enemies.map((h) => ({
+                  hero: h,
+                  level: 0,
+                  kda: { kills: 0, deaths: 0, assists: 0 },
+                })),
+              };
+              const resp = await postSuggest(unifiedPayload, {
                 signal: suggestAbortRef.current.signal,
                 timeoutMs: 20000,
               });
               setInitResp(resp);
               setStarted(true);
-              setInitPayload(payload as any);
+              setInitPayload(payload as any); // keep original for UI
               const items = (resp.purchase_order ?? []).map((r) => r.item);
               if ((resp.purchase_order ?? []).length > 0) {
                 setCollapsedInit(true);
@@ -109,6 +126,7 @@ export function App() {
               hero={initPayload?.hero}
               rank={initPayload?.rank}
               role={initPayload?.role}
+              minuteRef={tickMinuteRef}
               onSubmit={async (payload) => {
                 setTickLocked(true);
                 setTickLoading(true);
@@ -144,7 +162,7 @@ export function App() {
           <div ref={tickRespRef}>
             <Card className="glass-card mt-6">
               <CardHeader>
-                <CardTitle>Resultados de /tick</CardTitle>
+                <CardTitle>Resultados (actualización)</CardTitle>
               </CardHeader>
               <CardContent>
                 <PurchaseList order={tickResp.purchase_order ?? []} />
@@ -155,8 +173,12 @@ export function App() {
                       variant="outline"
                       onClick={() => {
                         setTickLocked(false);
-                        // Al crear nuevo tick, re-abrimos la sección de live update
-                        setCollapsedLive(false);
+                        setCollapsedLive(false); // re-abrir
+                        // Enfocar minuto para siguiente actualización
+                        requestAnimationFrame(() => {
+                          tickMinuteRef.current?.focus();
+                          tickMinuteRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                        });
                       }}
                     >
                       Crear nuevo tick

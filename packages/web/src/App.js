@@ -28,27 +28,43 @@ export function App() {
             tickAbortRef.current?.abort("unmount");
         };
     }, []);
-    return (_jsxs("div", { className: "w-full min-h-screen px-4 sm:px-6 lg:px-8 py-6", children: [_jsxs("header", { className: "mb-6 flex items-center justify-between", children: [_jsx("h1", { className: "title-gold", children: "Dota Plus Free" }), _jsx("div", { className: "text-xs text-slate-500", children: "v1.0" })] }), _jsxs("div", { className: "max-w-6xl mx-auto", children: [_jsx(CollapsibleCard, { title: _jsx("span", { className: "text-lg text-slate-100", children: "Configuraci\u00F3n inicial" }), collapsed: collapsedInit, onToggle: setCollapsedInit, className: "glass-card mb-6", children: _jsx(InitForm, { disabled: started, onSubmit: async (payload) => {
+    return (_jsxs("div", { className: "w-full min-h-screen px-4 sm:px-6 lg:px-8 py-6", children: [_jsxs("header", { className: "mb-6 flex items-center justify-between", children: [_jsx("h1", { className: "title-gold", children: "Dota Plus Free" }), _jsx("div", { className: "text-xs text-slate-500", children: "v1.0" })] }), _jsxs("div", { className: "max-w-6xl mx-auto", children: [_jsx(CollapsibleCard, { title: _jsx("span", { className: "text-lg text-slate-100", children: "Configuraci\u00F3n inicial" }), collapsed: collapsedInit, onToggle: setCollapsedInit, className: "glass-card mb-6", children: _jsx(InitForm, { disabled: started, initialValues: initPayload ?? undefined, onSubmit: async (payload) => {
                                 // cancel previous suggest
                                 suggestAbortRef.current?.abort("new-suggest");
                                 suggestAbortRef.current = new AbortController();
-                                const resp = await postSuggest(payload, {
+                                // Nueva estructura unificada: minute 0 + my_status + enemy_status (niveles/kda en 0)
+                                const unifiedPayload = {
+                                    minute: 0,
+                                    my_status: {
+                                        hero: payload.hero,
+                                        role: payload.role,
+                                        rank: payload.rank,
+                                        level: 0,
+                                        kda: { kills: 0, deaths: 0, assists: 0 },
+                                    },
+                                    enemy_status: payload.enemies.map((h) => ({
+                                        hero: h,
+                                        level: 0,
+                                        kda: { kills: 0, deaths: 0, assists: 0 },
+                                    })),
+                                };
+                                const resp = await postSuggest(unifiedPayload, {
                                     signal: suggestAbortRef.current.signal,
                                     timeoutMs: 20000,
                                 });
                                 setInitResp(resp);
                                 setStarted(true);
-                                setInitPayload(payload);
+                                setInitPayload(payload); // keep original for UI
                                 const items = (resp.purchase_order ?? []).map((r) => r.item);
                                 if ((resp.purchase_order ?? []).length > 0) {
                                     setCollapsedInit(true);
                                     setCollapsedLive(true);
                                 }
-                            }, onReset: () => {
+                            }, onReset: (vals) => {
                                 setStarted(false);
                                 setInitResp(null);
                                 setTickResp(null);
-                                setInitPayload(null);
+                                setInitPayload(vals);
                                 setTickLocked(false);
                                 setTickLoading(false);
                                 setCollapsedInit(false);
@@ -81,7 +97,7 @@ export function App() {
                                         block: "start",
                                     });
                                 }, 50);
-                            } }) })), tickResp && (_jsx("div", { ref: tickRespRef, children: _jsxs(Card, { className: "glass-card mt-6", children: [_jsx(CardHeader, { children: _jsx(CardTitle, { children: "Resultados de /tick" }) }), _jsxs(CardContent, { children: [_jsx(PurchaseList, { order: tickResp.purchase_order ?? [] }), tickLocked && (_jsx("div", { className: "mt-4", children: _jsx(Button, { type: "button", variant: "outline", onClick: () => {
+                            } }) })), tickResp && (_jsx("div", { ref: tickRespRef, children: _jsxs(Card, { className: "glass-card mt-6", children: [_jsx(CardHeader, { children: _jsx(CardTitle, { children: "Resultados (actualizaci\u00F3n)" }) }), _jsxs(CardContent, { children: [_jsx(PurchaseList, { order: tickResp.purchase_order ?? [] }), tickLocked && (_jsx("div", { className: "mt-4", children: _jsx(Button, { type: "button", variant: "outline", onClick: () => {
                                                     setTickLocked(false);
                                                     // Al crear nuevo tick, re-abrimos la sección de live update
                                                     setCollapsedLive(false);

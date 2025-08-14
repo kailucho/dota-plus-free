@@ -16,6 +16,7 @@ export type TickFormProps = {
   rank?: string;
   role?: string;
   loading?: boolean;
+  minuteRef?: React.RefObject<HTMLInputElement>;
 };
 
 export function TickForm({
@@ -26,6 +27,7 @@ export function TickForm({
   rank,
   role,
   loading,
+  minuteRef,
 }: TickFormProps) {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [imgFile, setImgFile] = React.useState<File | null>(null);
@@ -72,23 +74,30 @@ export function TickForm({
   }, [enemies]);
 
   // --- Autocompletar desde captura (auto-extract al elegir/soltar archivo)
+  async function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(String(reader.result));
+      reader.onerror = (e) => reject(e);
+      reader.readAsDataURL(file);
+    });
+  }
+
   async function handleExtract(file?: File) {
     const f = file ?? imgFile;
     if (!f) return;
     setExtracting(true);
     setExtractError(null);
     try {
-      const fd = new FormData();
-      fd.append("image", f);
-      if (hero) fd.append("hero", hero);
-      if (rank) fd.append("rank", rank);
-      if (role) fd.append("role", role);
-      enemies.forEach((e, i) => fd.append(`enemies[${i}]`, e));
+      const image_b64 = await fileToBase64(f);
+      const payload: any = { image_b64 };
+      payload.enemies = enemies;
 
-      const r = await fetch(
-        import.meta.env.VITE_API_URL + "/tick/extract",
-        { method: "POST", body: fd }
-      );
+      const r = await fetch(import.meta.env.VITE_API_URL + "/tick/extract", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       if (!r.ok) throw new Error(await r.text());
       const data = await r.json();
 
@@ -101,12 +110,16 @@ export function TickForm({
           );
           const base = { hero: h, level: "", k: "", d: "", a: "" };
           if (!match) return base;
+            const mkda = match.kda || {};
+            const kVal = mkda.k ?? mkda.kills;
+            const dVal = mkda.d ?? mkda.deaths;
+            const aVal = mkda.a ?? mkda.assists;
           return {
             hero: h,
             level: match.level != null ? String(match.level) : base.level,
-            k: match.kda?.k != null ? String(match.kda.k) : base.k,
-            d: match.kda?.d != null ? String(match.kda.d) : base.d,
-            a: match.kda?.a != null ? String(match.kda.a) : base.a,
+            k: kVal != null ? String(kVal) : base.k,
+            d: dVal != null ? String(dVal) : base.d,
+            a: aVal != null ? String(aVal) : base.a,
           };
         });
         replace(merged);
@@ -115,12 +128,13 @@ export function TickForm({
       if (data.my_status?.level != null)
         form.setValue("myLevel", String(data.my_status.level));
       if (data.my_status?.kda) {
-        if (data.my_status.kda.k != null)
-          form.setValue("myK", String(data.my_status.kda.k));
-        if (data.my_status.kda.d != null)
-          form.setValue("myD", String(data.my_status.kda.d));
-        if (data.my_status.kda.a != null)
-          form.setValue("myA", String(data.my_status.kda.a));
+        const mkda = data.my_status.kda;
+        const kVal = mkda.k ?? mkda.kills;
+        const dVal = mkda.d ?? mkda.deaths;
+        const aVal = mkda.a ?? mkda.assists;
+        if (kVal != null) form.setValue("myK", String(kVal));
+        if (dVal != null) form.setValue("myD", String(dVal));
+        if (aVal != null) form.setValue("myA", String(aVal));
       }
     } catch (err: any) {
       setExtractError(
@@ -168,35 +182,33 @@ export function TickForm({
     <form
       onSubmit={form.handleSubmit((vals) => {
         if (disabled) return;
-        const enemy_status = vals.enemies
-          .map((r) => {
-            const out: any = { hero: r.hero };
-            if (r.level !== "") out.level = Number(r.level);
-            const hasKDA = r.k !== "" || r.d !== "" || r.a !== "";
-            if (hasKDA)
-              out.kda = {
-                k: Number(r.k || 0),
-                d: Number(r.d || 0),
-                a: Number(r.a || 0),
-              };
-            return out;
-          })
-          .filter((e) => e.level !== undefined || e.kda !== undefined);
+        const enemy_status = vals.enemies.map((r) => {
+          const out: any = { hero: r.hero };
+          if (r.level !== "") out.level = Number(r.level);
+          const hasKDA = r.k !== "" || r.d !== "" || r.a !== "";
+          if (hasKDA)
+            out.kda = {
+              kills: Number(r.k || 0),
+              deaths: Number(r.d || 0),
+              assists: Number(r.a || 0),
+            };
+          return out;
+        });
 
         onSubmit({
           minute: Number(vals.minute || 0),
           my_status: {
-            level: vals.myLevel ? Number(vals.myLevel) : undefined,
-            kda: {
-              k: vals.myK ? Number(vals.myK) : undefined,
-              d: vals.myD ? Number(vals.myD) : undefined,
-              a: vals.myA ? Number(vals.myA) : undefined,
-            },
             hero,
-            rank,
             role,
+            rank,
+            level: vals.myLevel ? Number(vals.myLevel) : 0,
+            kda: {
+              kills: Number(vals.myK || 0),
+              deaths: Number(vals.myD || 0),
+              assists: Number(vals.myA || 0),
+            },
           },
-          enemy_status: enemy_status.length ? enemy_status : undefined,
+          enemy_status,
         });
       })}
     >
@@ -264,7 +276,7 @@ export function TickForm({
                     <span className="font-medium">Arrastra una imagen o haz clic para subirla</span>
                   )}
                 </div>
-                <div className="text-xs text-slate-400">Intentaremos completar tu nivel/KDA y el de los enemigos (si es legible).</div>
+                <div className="text-xs text-slate-400">Intentaremos completar tu nivel/KDA y el de los enemigos (si es legible). Se envía en base64 (sin multipart).</div>
               </div>
 
               <div>
@@ -383,6 +395,7 @@ export function TickForm({
               inputMode="numeric"
               maxLength={2}
               value={minute}
+              ref={minuteRef}
               onChange={(e) =>
                 form.setValue(
                   "minute",
@@ -638,7 +651,7 @@ export function TickForm({
               }
               aria-live="polite"
             >
-              {loading ? "Enviando…" : "Enviar /tick"}
+              {loading ? "Enviando…" : "Enviar actualización"}
             </Button>
             {(minute === "" || enemiesRows.some((r) => r.level === "")) &&
               !disabled &&
@@ -684,7 +697,7 @@ export function TickForm({
               </div>
             )}
             {disabled && (
-              <div className="text-xs text-slate-500">Inicia la partida con /init para habilitar /tick o pulsa "Crear nuevo tick".</div>
+              <div className="text-xs text-slate-500">Inicia la partida con /init para habilitar actualizaciones o pulsa "Crear nuevo tick".</div>
             )}
           </div>
         </div>
